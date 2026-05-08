@@ -1,6 +1,52 @@
 import { motion, AnimatePresence } from "motion/react";
-import { Search, Menu, ArrowRight, ArrowLeft } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Search, Menu, ArrowRight, ArrowLeft, X, LogIn, LayoutDashboard, Trash2, CheckCircle, Clock } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, getDoc, getDocFromServer } from 'firebase/firestore';
+import firebaseConfig from '../firebase-applet-config.json';
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+
+// Error Handling Helper (Required by instructions)
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 const fadeIn = {
   initial: { opacity: 0, y: 30 },
@@ -24,6 +70,112 @@ const staggerContainer = {
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
+  const [showContact, setShowContact] = useState(false);
+  const [showPortfolio, setShowPortfolio] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [inquiries, setInquiries] = useState<any[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Firebase Auth State
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      if (u) {
+        // Check if user is admin
+        try {
+          const adminDoc = await getDoc(doc(db, 'admins', u.uid));
+          setIsAdmin(adminDoc.exists());
+        } catch (error) {
+          console.error("Admin check failed", error);
+        }
+      } else {
+        setIsAdmin(false);
+      }
+    });
+
+    // Test connection
+    const testConnection = async () => {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if(error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration.");
+        }
+      }
+    };
+    testConnection();
+
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch Inquiries for Admin
+  useEffect(() => {
+    if (isAdmin && showAdmin) {
+      const q = query(collection(db, 'inquiries'), orderBy('createdAt', 'desc'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        setInquiries(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'inquiries');
+      });
+      return () => unsubscribe();
+    }
+  }, [isAdmin, showAdmin]);
+
+  const handleAdminLogin = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Login failed", error);
+    }
+  };
+
+  const handleAdminLogout = async () => {
+    await signOut(auth);
+    setShowAdmin(false);
+  };
+
+  const submitInquiry = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    const formData = new FormData(e.currentTarget);
+    const data = {
+      name: formData.get('name') as string,
+      email: formData.get('email') as string,
+      type: formData.get('type') as string,
+      message: formData.get('message') as string,
+      createdAt: serverTimestamp(),
+      status: 'new'
+    };
+
+    try {
+      await addDoc(collection(db, 'inquiries'), data);
+      setShowContact(false);
+      alert('문의가 접수되었습니다.');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'inquiries');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const updateInquiryStatus = async (id: string, status: string) => {
+    try {
+      await updateDoc(doc(db, 'inquiries', id), { status });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `inquiries/${id}`);
+    }
+  };
+
+  const deleteInquiry = async (id: string) => {
+    if (!confirm('정말로 삭제하시겠습니까?')) return;
+    try {
+      await deleteDoc(doc(db, 'inquiries', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `inquiries/${id}`);
+    }
+  };
 
   // Allow scrolling to trigger entrance
   useEffect(() => {
@@ -106,7 +258,7 @@ export default function App() {
           <a href="#" className="flex items-center gap-4 md:gap-6 hover:opacity-70 transition-opacity">
             <div className="w-5 h-5 md:w-6 md:h-6">
               <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                <path clip-rule="evenodd" d="M39.475 21.6262C40.358 21.4363 40.6863 21.5589 40.7581 21.5934C40.7876 21.655 40.8547 21.857 40.8082 22.3336C40.7408 23.0255 40.4502 24.0046 39.8572 25.2301C38.6799 27.6631 36.5085 30.6631 33.5858 33.5858C30.6631 36.5085 27.6632 38.6799 25.2301 39.8572C24.0046 40.4502 23.0255 40.7407 22.3336 40.8082C21.8571 40.8547 21.6551 40.7875 21.5934 40.7581C21.5589 40.6863 21.4363 40.358 21.6262 39.475C21.8562 38.4054 22.4689 36.9657 23.5038 35.2817C24.7575 33.2417 26.5497 30.9744 28.7621 28.762C30.9744 26.5497 33.2417 24.7574 35.2817 23.5037C36.9657 22.4689 38.4054 21.8562 39.475 21.6262ZM4.41189 29.2403L18.7597 43.5881C19.8813 44.7097 21.4027 44.9179 22.7217 44.7893C24.0585 44.659 25.5148 44.1631 26.9723 43.4579C29.9052 42.0387 33.2618 39.5667 36.4142 36.4142C39.5667 33.2618 42.0387 29.9052 43.4579 26.9723C44.1631 25.5148 44.659 24.0585 44.7893 22.7217C44.9179 21.4027 44.7097 19.8813 43.5881 18.7597L29.2403 4.41187C27.8527 3.02428 25.8765 3.02573 24.2861 3.36776C22.6081 3.72863 20.7334 4.58419 18.8396 5.74801C16.4978 7.18716 13.9881 9.18353 11.5858 11.5858C9.18354 13.988 7.18717 16.4978 5.74802 18.8396C4.58421 20.7334 3.72865 22.6081 3.36778 24.2861C3.02574 25.8765 3.02429 27.8527 4.41189 29.2403Z" fill="black" fill-rule="evenodd"></path>
+                <path clipRule="evenodd" d="M39.475 21.6262C40.358 21.4363 40.6863 21.5589 40.7581 21.5934C40.7876 21.655 40.8547 21.857 40.8082 22.3336C40.7408 23.0255 40.4502 24.0046 39.8572 25.2301C38.6799 27.6631 36.5085 30.6631 33.5858 33.5858C30.6631 36.5085 27.6632 38.6799 25.2301 39.8572C24.0046 40.4502 23.0255 40.7407 22.3336 40.8082C21.8571 40.8547 21.6551 40.7875 21.5934 40.7581C21.5589 40.6863 21.4363 40.358 21.6262 39.475C21.8562 38.4054 22.4689 36.9657 23.5038 35.2817C24.7575 33.2417 26.5497 30.9744 28.7621 28.762C30.9744 26.5497 33.2417 24.7574 35.2817 23.5037C36.9657 22.4689 38.4054 21.8562 39.475 21.6262ZM4.41189 29.2403L18.7597 43.5881C19.8813 44.7097 21.4027 44.9179 22.7217 44.7893C24.0585 44.659 25.5148 44.1631 26.9723 43.4579C29.9052 42.0387 33.2618 39.5667 36.4142 36.4142C39.5667 33.2618 42.0387 29.9052 43.4579 26.9723C44.1631 25.5148 44.659 24.0585 44.7893 22.7217C44.9179 21.4027 44.7097 19.8813 43.5881 18.7597L29.2403 4.41187C27.8527 3.02428 25.8765 3.02573 24.2861 3.36776C22.6081 3.72863 20.7334 4.58419 18.8396 5.74801C16.4978 7.18716 13.9881 9.18353 11.5858 11.5858C9.18354 13.988 7.18717 16.4978 5.74802 18.8396C4.58421 20.7334 3.72865 22.6081 3.36778 24.2861C3.02574 25.8765 3.02429 27.8527 4.41189 29.2403Z" fill="black" fillRule="evenodd"></path>
               </svg>
             </div>
             <h1 className="text-xs md:text-sm font-sans font-medium uppercase tracking-[0.25em] h-[25px] w-[93.7031px] flex items-center">ONSPACE</h1>
@@ -130,6 +282,12 @@ export default function App() {
           </motion.nav>
           <div className="flex items-center gap-2 md:gap-4">
             <button className="p-2 md:p-2 hover:bg-neutral-100 rounded-full transition-colors"><Search size={18} className="md:w-5 md:h-5" strokeWidth={1.5} /></button>
+            <button 
+              onClick={() => isAdmin ? setShowAdmin(true) : handleAdminLogin()}
+              className="p-2 md:p-2 hover:bg-neutral-100 rounded-full transition-colors"
+            >
+              <LayoutDashboard size={18} className="md:w-5 md:h-5" strokeWidth={1.5} />
+            </button>
             <button className="p-2 md:p-2 hover:bg-neutral-100 rounded-full transition-colors"><Menu size={18} className="md:w-5 md:h-5" strokeWidth={1.5} /></button>
           </div>
         </motion.div>
@@ -360,10 +518,16 @@ export default function App() {
                 세심한 주의를 기울입니다.
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-4 md:gap-6">
-                <button className="bg-black text-white px-8 md:px-12 py-4 md:py-5 font-sans uppercase text-[10px] font-bold tracking-[0.2em] hover:bg-neutral-800 transition-colors">
+                <button 
+                  onClick={() => setShowContact(true)}
+                  className="bg-black text-white px-8 md:px-12 py-4 md:py-5 font-sans uppercase text-[10px] font-bold tracking-[0.2em] hover:bg-neutral-800 transition-colors"
+                >
                   문의하기
                 </button>
-                <button className="bg-transparent border fine-border px-8 md:px-12 py-4 md:py-5 font-sans uppercase text-[10px] font-bold tracking-[0.2em] hover:bg-white transition-colors">
+                <button 
+                  onClick={() => setShowPortfolio(true)}
+                  className="bg-transparent border fine-border px-8 md:px-12 py-4 md:py-5 font-sans uppercase text-[10px] font-bold tracking-[0.2em] hover:bg-white transition-colors"
+                >
                   포트폴리오 보기
                 </button>
               </div>
@@ -379,7 +543,7 @@ export default function App() {
             <div className="flex items-center gap-4 mb-6 md:mb-8">
               <div className="w-5 h-5">
                 <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                  <path clip-rule="evenodd" d="M39.475 21.6262C40.358 21.4363 40.6863 21.5589 40.7581 21.5934C40.7876 21.655 40.8547 21.857 40.8082 22.3336C40.7408 23.0255 40.4502 24.0046 39.8572 25.2301C38.6799 27.6631 36.5085 30.6631 33.5858 33.5858C30.6631 36.5085 27.6632 38.6799 25.2301 39.8572C24.0046 40.4502 23.0255 40.7407 22.3336 40.8082C21.8571 40.8547 21.6551 40.7875 21.5934 40.7581C21.5589 40.6863 21.4363 40.358 21.6262 39.475C21.8562 38.4054 22.4689 36.9657 23.5038 35.2817C24.7575 33.2417 26.5497 30.9744 28.7621 28.762C30.9744 26.5497 33.2417 24.7574 35.2817 23.5037C36.9657 22.4689 38.4054 21.8562 39.475 21.6262ZM4.41189 29.2403L18.7597 43.5881C19.8813 44.7097 21.4027 44.9179 22.7217 44.7893C24.0585 44.659 25.5148 44.1631 26.9723 43.4579C29.9052 42.0387 33.2618 39.5667 36.4142 36.4142C39.5667 33.2618 42.0387 29.9052 43.4579 26.9723C44.1631 25.5148 44.659 24.0585 44.7893 22.7217C44.9179 21.4027 44.7097 19.8813 43.5881 18.7597L29.2403 4.41187C27.8527 3.02428 25.8765 3.02573 24.2861 3.36776C22.6081 3.72863 20.7334 4.58419 18.8396 5.74801C16.4978 7.18716 13.9881 9.18353 11.5858 11.5858C9.18354 13.988 7.18717 16.4978 5.74802 18.8396C4.58421 20.7334 3.72865 22.6081 3.36778 24.2861C3.02574 25.8765 3.02429 27.8527 4.41189 29.2403Z" fill="black" fill-rule="evenodd"></path>
+                  <path clipRule="evenodd" d="M39.475 21.6262C40.358 21.4363 40.6863 21.5589 40.7581 21.5934C40.7876 21.655 40.8547 21.857 40.8082 22.3336C40.7408 23.0255 40.4502 24.0046 39.8572 25.2301C38.6799 27.6631 36.5085 30.6631 33.5858 33.5858C30.6631 36.5085 27.6632 38.6799 25.2301 39.8572C24.0046 40.4502 23.0255 40.7407 22.3336 40.8082C21.8571 40.8547 21.6551 40.7875 21.5934 40.7581C21.5589 40.6863 21.4363 40.358 21.6262 39.475C21.8562 38.4054 22.4689 36.9657 23.5038 35.2817C24.7575 33.2417 26.5497 30.9744 28.7621 28.762C30.9744 26.5497 33.2417 24.7574 35.2817 23.5037C36.9657 22.4689 38.4054 21.8562 39.475 21.6262ZM4.41189 29.2403L18.7597 43.5881C19.8813 44.7097 21.4027 44.9179 22.7217 44.7893C24.0585 44.659 25.5148 44.1631 26.9723 43.4579C29.9052 42.0387 33.2618 39.5667 36.4142 36.4142C39.5667 33.2618 42.0387 29.9052 43.4579 26.9723C44.1631 25.5148 44.659 24.0585 44.7893 22.7217C44.9179 21.4027 44.7097 19.8813 43.5881 18.7597L29.2403 4.41187C27.8527 3.02428 25.8765 3.02573 24.2861 3.36776C22.6081 3.72863 20.7334 4.58419 18.8396 5.74801C16.4978 7.18716 13.9881 9.18353 11.5858 11.5858C9.18354 13.988 7.18717 16.4978 5.74802 18.8396C4.58421 20.7334 3.72865 22.6081 3.36778 24.2861C3.02574 25.8765 3.02429 27.8527 4.41189 29.2403Z" fill="black" fillRule="evenodd"></path>
                 </svg>
               </div>
               <h2 className="font-sans font-medium uppercase text-base md:text-lg tracking-[0.2em]">ONSPACE</h2>
@@ -413,6 +577,296 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Contact Modal */}
+      <AnimatePresence>
+        {showContact && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-white max-w-2xl w-full p-8 md:p-12 relative editorial-shadow"
+            >
+              <button 
+                onClick={() => setShowContact(false)}
+                className="absolute top-6 right-6 p-2 hover:bg-neutral-100 rounded-full transition-colors"
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+              <div className="space-y-8">
+                <div>
+                  <span className="font-sans uppercase text-neutral-400 text-[10px] tracking-widest block mb-2">Contact</span>
+                  <h2 className="font-sans text-3xl font-bold">프로젝트 문의</h2>
+                </div>
+                <form className="space-y-6" onSubmit={submitInquiry}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="font-sans text-[10px] uppercase tracking-widest text-neutral-400">성함</label>
+                      <input required name="name" type="text" className="w-full bg-neutral-50 border-b fine-border p-3 focus:outline-none focus:border-black transition-colors" placeholder="Name" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-sans text-[10px] uppercase tracking-widest text-neutral-400">이메일</label>
+                      <input required name="email" type="email" className="w-full bg-neutral-50 border-b fine-border p-3 focus:outline-none focus:border-black transition-colors" placeholder="Email" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="font-sans text-[10px] uppercase tracking-widest text-neutral-400">프로젝트 유형</label>
+                    <select name="type" className="w-full bg-neutral-50 border-b fine-border p-3 focus:outline-none focus:border-black transition-colors appearance-none">
+                      <option>주거 공간 (Residential)</option>
+                      <option>상업 공간 (Commercial)</option>
+                      <option>기타 (Other)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="font-sans text-[10px] uppercase tracking-widest text-neutral-400">메시지</label>
+                    <textarea name="message" rows={4} className="w-full bg-neutral-50 border-b fine-border p-3 focus:outline-none focus:border-black transition-colors resize-none" placeholder="Message"></textarea>
+                  </div>
+                  <button 
+                    type="submit" 
+                    disabled={isSubmitting}
+                    className="w-full bg-black text-white py-4 font-sans uppercase text-[10px] font-bold tracking-[0.2em] hover:bg-neutral-800 transition-colors disabled:bg-neutral-400"
+                  >
+                    {isSubmitting ? '전송 중...' : '문의 보내기'}
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Portfolio Overlay */}
+      <AnimatePresence>
+        {showPortfolio && (
+          <motion.div 
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-[200] bg-[#f9f9f9] overflow-y-auto"
+          >
+            <div className="sticky top-0 z-10 bg-[#f9f9f9]/80 backdrop-blur-xl px-6 md:px-margin-edge border-b fine-border">
+              <div className="flex items-center justify-between h-16 md:h-20 max-w-7xl mx-auto">
+                <h3 className="font-sans font-bold uppercase tracking-widest text-[10px]">Portfolio Archive</h3>
+                <button 
+                  onClick={() => setShowPortfolio(false)}
+                  className="flex items-center gap-2 hover:opacity-50 transition-opacity"
+                >
+                  <span className="font-sans uppercase text-[10px] tracking-widest">Close</span>
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div className="max-w-7xl mx-auto px-6 py-16 md:py-24">
+              <div className="space-y-32">
+                {[
+                  { 
+                    title: "아틀리에 부르주아", 
+                    location: "파리, 프랑스", 
+                    before: "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=2069",
+                    after: "https://images.unsplash.com/photo-1600210491892-03d54c0aaf97?auto=format&fit=crop&q=80&w=1974",
+                    desc: "19세기 고택의 구조적 본질을 유지하면서 현대적인 미니멀리즘을 주입했습니다."
+                  },
+                  { 
+                    title: "무의 공간", 
+                    location: "교토, 일본", 
+                    before: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&q=80&w=2070",
+                    after: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=2070",
+                    desc: "교토의 전통적인 가옥을 명상과 치유를 위한 현대적 다실로 재탄생시켰습니다."
+                  },
+                  { 
+                    title: "스카이 라운지", 
+                    location: "뉴욕, 미국", 
+                    before: "https://images.unsplash.com/photo-1507089947368-19c1da97753c?auto=format&fit=crop&q=80&w=2070",
+                    after: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=80&w=2070",
+                    desc: "맨해튼의 거친 오피스 공간을 부드러운 곡선과 따뜻한 질감의 라운지로 변모시켰습니다."
+                  }
+                ].map((project, i) => (
+                  <motion.div 
+                    key={i}
+                    initial={{ opacity: 0, y: 40 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-100px" }}
+                    transition={{ duration: 1 }}
+                    className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-16 items-center"
+                  >
+                    <div className="lg:col-span-5 space-y-6">
+                      <div>
+                        <span className="font-sans uppercase text-neutral-400 text-[10px] tracking-[0.3em] block mb-2">Project {i + 1}</span>
+                        <h4 className="font-sans font-bold text-3xl md:text-4xl">{project.title}</h4>
+                        <p className="text-neutral-500 font-sans text-xs tracking-widest uppercase mt-2">{project.location}</p>
+                      </div>
+                      <p className="text-neutral-600 font-sans leading-relaxed text-sm md:text-base max-w-md">
+                        {project.desc}
+                      </p>
+                      <div className="pt-4 flex gap-8">
+                        <div>
+                          <span className="block text-[10px] uppercase tracking-widest text-neutral-400 mb-1">Duration</span>
+                          <span className="text-sm font-sans uppercase">6 Months</span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] uppercase tracking-widest text-neutral-400 mb-1">Style</span>
+                          <span className="text-sm font-sans uppercase">Essentialism</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="lg:col-span-7 grid grid-cols-2 gap-4">
+                      <div className="space-y-4">
+                        <div className="aspect-[3/4] overflow-hidden grayscale brightness-75">
+                          <img 
+                            src={project.before} 
+                            alt="Before" 
+                            className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                        <span className="block text-[10px] uppercase tracking-widest text-center text-neutral-400">Before</span>
+                      </div>
+                      <div className="space-y-4 pt-12">
+                        <div className="aspect-[3/4] overflow-hidden shadow-2xl">
+                          <img 
+                            src={project.after} 
+                            alt="After" 
+                            className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                        <span className="block text-[10px] uppercase tracking-widest text-center text-black font-bold">After</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Admin Dashboard Overlay */}
+      <AnimatePresence>
+        {showAdmin && (
+          <motion.div 
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 200 }}
+            className="fixed inset-0 z-[300] bg-[#f3f3f3] overflow-y-auto"
+          >
+             <div className="sticky top-0 z-10 bg-white border-b fine-border px-6 md:px-margin-edge">
+              <div className="flex items-center justify-between h-16 md:h-20 max-w-7xl mx-auto">
+                <div className="flex items-center gap-4">
+                  <LayoutDashboard size={18} />
+                  <h3 className="font-sans font-bold uppercase tracking-widest text-[10px]">Admin Dashboard</h3>
+                </div>
+                <div className="flex items-center gap-6">
+                  {user && (
+                    <div className="hidden md:flex items-center gap-3">
+                      <img src={user.photoURL || ''} alt="avatar" className="w-6 h-6 rounded-full" />
+                      <span className="text-[10px] font-sans uppercase tracking-widest text-neutral-500">{user.email}</span>
+                    </div>
+                  )}
+                  <button 
+                    onClick={handleAdminLogout}
+                    className="p-2 hover:bg-neutral-100 rounded-full transition-colors lg:hidden"
+                  >
+                    <LogIn size={18} />
+                  </button>
+                  <button 
+                    onClick={() => setShowAdmin(false)}
+                    className="flex items-center gap-2 hover:opacity-50 transition-opacity"
+                  >
+                    <span className="font-sans uppercase text-[10px] tracking-widest">Close</span>
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-6 py-12">
+              <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-4">
+                <div>
+                  <span className="font-sans uppercase text-neutral-400 text-[10px] tracking-[0.3em] block mb-2">Management</span>
+                  <h2 className="font-sans text-4xl font-bold">문의 내역 관리</h2>
+                </div>
+                <div className="flex gap-4">
+                  <div className="bg-white px-6 py-4 editorial-shadow fine-border flex flex-col">
+                    <span className="text-[10px] font-sans uppercase tracking-widest text-neutral-400 mb-1">총 문의</span>
+                    <span className="text-2xl font-bold">{inquiries.length}</span>
+                  </div>
+                  <div className="bg-white px-6 py-4 editorial-shadow fine-border flex flex-col">
+                    <span className="text-[10px] font-sans uppercase tracking-widest text-neutral-400 mb-1">신규 문의</span>
+                    <span className="text-2xl font-bold">{inquiries.filter(i => i.status === 'new').length}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {inquiries.length === 0 ? (
+                  <div className="bg-white p-12 text-center fine-border">
+                    <p className="text-neutral-400 font-sans tracking-widest uppercase text-xs">문의 내역이 없습니다.</p>
+                  </div>
+                ) : (
+                  inquiries.map((inquiry) => (
+                    <motion.div 
+                      layout
+                      key={inquiry.id}
+                      className="bg-white p-6 md:p-8 fine-border editorial-shadow flex flex-col md:flex-row gap-8 justify-between"
+                    >
+                      <div className="flex-1 space-y-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-3 mb-1">
+                              <h4 className="font-sans font-bold text-xl">{inquiry.name}</h4>
+                              <span className={`text-[8px] uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                                inquiry.status === 'new' ? 'bg-black text-white' : 
+                                inquiry.status === 'read' ? 'bg-neutral-100 text-neutral-500' : 
+                                'bg-green-50 text-green-600'
+                              }`}>
+                                {inquiry.status}
+                              </span>
+                            </div>
+                            <p className="text-neutral-400 font-sans text-xs">{inquiry.email} — {inquiry.type}</p>
+                          </div>
+                          <span className="text-neutral-300 font-sans text-[10px] uppercase">
+                            {inquiry.createdAt?.toDate().toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="bg-neutral-50 p-4 font-sans text-sm text-neutral-700 leading-relaxed italic">
+                          "{inquiry.message}"
+                        </div>
+                      </div>
+                      
+                      <div className="flex md:flex-col gap-2 justify-end">
+                        <button 
+                          onClick={() => updateInquiryStatus(inquiry.id, inquiry.status === 'new' ? 'read' : 'replied')}
+                          className="flex items-center justify-center gap-2 bg-neutral-900 text-white px-4 py-3 font-sans uppercase text-[9px] font-bold tracking-widest hover:bg-black transition-colors"
+                        >
+                          <CheckCircle size={14} />
+                          {inquiry.status === 'new' ? '읽음 처리' : '완료 처리'}
+                        </button>
+                        <button 
+                          onClick={() => deleteInquiry(inquiry.id)}
+                          className="flex items-center justify-center gap-2 border fine-border px-4 py-3 font-sans uppercase text-[9px] font-bold tracking-widest hover:bg-neutral-50 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                          삭제
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   </div>
 );
