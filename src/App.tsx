@@ -92,18 +92,18 @@ export default function App() {
         {/* Navigation */}
       <header className="sticky top-0 z-50 bg-[#f9f9f9]/80 backdrop-blur-xl px-6 md:px-margin-edge border-b fine-border">
         <div className="flex items-center justify-between h-16 md:h-20 max-w-7xl mx-auto">
-          <div className="flex items-center gap-4 md:gap-6">
+          <a href="#" className="flex items-center gap-4 md:gap-6 hover:opacity-70 transition-opacity">
             <div className="w-5 h-5 md:w-6 md:h-6">
               <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
                 <path clip-rule="evenodd" d="M39.475 21.6262C40.358 21.4363 40.6863 21.5589 40.7581 21.5934C40.7876 21.655 40.8547 21.857 40.8082 22.3336C40.7408 23.0255 40.4502 24.0046 39.8572 25.2301C38.6799 27.6631 36.5085 30.6631 33.5858 33.5858C30.6631 36.5085 27.6632 38.6799 25.2301 39.8572C24.0046 40.4502 23.0255 40.7407 22.3336 40.8082C21.8571 40.8547 21.6551 40.7875 21.5934 40.7581C21.5589 40.6863 21.4363 40.358 21.6262 39.475C21.8562 38.4054 22.4689 36.9657 23.5038 35.2817C24.7575 33.2417 26.5497 30.9744 28.7621 28.762C30.9744 26.5497 33.2417 24.7574 35.2817 23.5037C36.9657 22.4689 38.4054 21.8562 39.475 21.6262ZM4.41189 29.2403L18.7597 43.5881C19.8813 44.7097 21.4027 44.9179 22.7217 44.7893C24.0585 44.659 25.5148 44.1631 26.9723 43.4579C29.9052 42.0387 33.2618 39.5667 36.4142 36.4142C39.5667 33.2618 42.0387 29.9052 43.4579 26.9723C44.1631 25.5148 44.659 24.0585 44.7893 22.7217C44.9179 21.4027 44.7097 19.8813 43.5881 18.7597L29.2403 4.41187C27.8527 3.02428 25.8765 3.02573 24.2861 3.36776C22.6081 3.72863 20.7334 4.58419 18.8396 5.74801C16.4978 7.18716 13.9881 9.18353 11.5858 11.5858C9.18354 13.988 7.18717 16.4978 5.74802 18.8396C4.58421 20.7334 3.72865 22.6081 3.36778 24.2861C3.02574 25.8765 3.02429 27.8527 4.41189 29.2403Z" fill="black" fill-rule="evenodd"></path>
               </svg>
             </div>
-            <h1 className="text-xs md:text-sm font-sans font-medium uppercase tracking-[0.25em]">ONSPACE</h1>
-          </div>
+            <h1 className="text-xs md:text-sm font-sans font-medium uppercase tracking-[0.25em] h-[25px] w-[93.7031px] flex items-center">ONSPACE</h1>
+          </a>
           <nav className="hidden md:flex items-center gap-12">
-            <a href="#" className="font-sans font-medium uppercase text-[10px] tracking-widest hover:opacity-50 transition-opacity">철학 (Philosophy)</a>
-            <a href="#" className="font-sans font-medium uppercase text-[10px] tracking-widest hover:opacity-50 transition-opacity">아카이브</a>
-            <a href="#" className="font-sans font-medium uppercase text-[10px] tracking-widest hover:opacity-50 transition-opacity">비스포크</a>
+            <a href="#philosophy" className="font-sans font-medium uppercase text-[13px] tracking-widest hover:opacity-50 transition-opacity">철학 (Philosophy)</a>
+            <a href="#archive" className="font-sans font-medium uppercase text-[13px] tracking-widest hover:opacity-50 transition-opacity">아카이브</a>
+            <a href="#bespoke" className="font-sans font-medium uppercase text-[13px] tracking-widest hover:opacity-50 transition-opacity">비스포크</a>
           </nav>
           <div className="flex items-center gap-2 md:gap-4">
             <button className="p-2 md:p-2 hover:bg-neutral-100 rounded-full transition-colors"><Search size={18} className="md:w-5 md:h-5" strokeWidth={1.5} /></button>
@@ -152,7 +152,7 @@ export default function App() {
         </section>
 
         {/* Editorial Grid */}
-        <section className="py-16 md:py-section-gap px-6 md:px-margin-edge bg-white">
+        <section id="philosophy" className="py-16 md:py-section-gap px-6 md:px-margin-edge bg-white">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8 items-start">
               {/* Left Column */}
@@ -210,7 +210,7 @@ export default function App() {
         </section>
 
         {/* Case Study Section (Dark) */}
-        <section className="py-16 md:py-section-gap px-6 md:px-margin-edge bg-black text-white">
+        <section id="archive" className="py-16 md:py-section-gap px-6 md:px-margin-edge bg-black text-white">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-baseline mb-12 md:mb-20">
               <div className="max-w-2xl">
@@ -275,7 +275,7 @@ export default function App() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 md:py-section-gap px-6 md:px-margin-edge bg-[#f3f3f3]">
+        <section id="bespoke" className="py-20 md:py-section-gap px-6 md:px-margin-edge bg-[#f3f3f3]">
           <div className="max-w-7xl mx-auto text-center">
             <motion.div 
               whileInView={{ opacity: 1, scale: 1 }}
