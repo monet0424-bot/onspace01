@@ -3,15 +3,21 @@ import { Search, Menu, ArrowRight, ArrowLeft } from "lucide-react";
 import { useState, useEffect } from "react";
 
 const fadeIn = {
-  initial: { opacity: 0, y: 20 },
+  initial: { opacity: 0, y: 30 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.8, ease: "easeOut" }
+  transition: { duration: 1, ease: [0.21, 0.47, 0.32, 0.98] }
+};
+
+const imageReveal = {
+  initial: { clipPath: "inset(100% 0% 0% 0%)" },
+  animate: { clipPath: "inset(0% 0% 0% 0%)" },
+  transition: { duration: 1.5, ease: [0.77, 0, 0.175, 1] }
 };
 
 const staggerContainer = {
   animate: {
     transition: {
-      staggerChildren: 0.2
+      staggerChildren: 0.15
     }
   }
 };
@@ -91,7 +97,12 @@ export default function App() {
       <div className="font-sans">
         {/* Navigation */}
       <header className="sticky top-0 z-50 bg-[#f9f9f9]/80 backdrop-blur-xl px-6 md:px-margin-edge border-b fine-border">
-        <div className="flex items-center justify-between h-16 md:h-20 max-w-7xl mx-auto">
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.2 }}
+          className="flex items-center justify-between h-16 md:h-20 max-w-7xl mx-auto"
+        >
           <a href="#" className="flex items-center gap-4 md:gap-6 hover:opacity-70 transition-opacity">
             <div className="w-5 h-5 md:w-6 md:h-6">
               <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
@@ -100,16 +111,28 @@ export default function App() {
             </div>
             <h1 className="text-xs md:text-sm font-sans font-medium uppercase tracking-[0.25em] h-[25px] w-[93.7031px] flex items-center">ONSPACE</h1>
           </a>
-          <nav className="hidden md:flex items-center gap-12">
-            <a href="#philosophy" className="font-sans font-medium uppercase text-[13px] tracking-widest hover:opacity-50 transition-opacity">철학 (Philosophy)</a>
-            <a href="#archive" className="font-sans font-medium uppercase text-[13px] tracking-widest hover:opacity-50 transition-opacity">아카이브</a>
-            <a href="#bespoke" className="font-sans font-medium uppercase text-[13px] tracking-widest hover:opacity-50 transition-opacity">비스포크</a>
-          </nav>
+          <motion.nav 
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
+            className="hidden md:flex items-center gap-12"
+          >
+            {['철학 (Philosophy)', '아카이브', '비스포크'].map((item, i) => (
+              <motion.a 
+                key={item}
+                variants={fadeIn}
+                href={`#${['philosophy', 'archive', 'bespoke'][i]}`} 
+                className="font-sans font-medium uppercase text-[13px] tracking-widest hover:opacity-50 transition-opacity"
+              >
+                {item}
+              </motion.a>
+            ))}
+          </motion.nav>
           <div className="flex items-center gap-2 md:gap-4">
             <button className="p-2 md:p-2 hover:bg-neutral-100 rounded-full transition-colors"><Search size={18} className="md:w-5 md:h-5" strokeWidth={1.5} /></button>
             <button className="p-2 md:p-2 hover:bg-neutral-100 rounded-full transition-colors"><Menu size={18} className="md:w-5 md:h-5" strokeWidth={1.5} /></button>
           </div>
-        </div>
+        </motion.div>
       </header>
 
       <main>
@@ -125,7 +148,7 @@ export default function App() {
               <div className="lg:w-7/12">
                 <motion.span variants={fadeIn} className="font-sans uppercase text-neutral-500 mb-6 md:mb-8 block tracking-[0.3em] text-[10px] md:text-xs">제 4 호 — 에센셜리즘 (본질주의)</motion.span>
                 <motion.h2 variants={fadeIn} className="font-sans text-[clamp(2.5rem,8vw,5rem)] leading-[1.1] font-bold">침묵,</motion.h2>
-                <motion.h2 variants={fadeIn} className="font-sans text-[clamp(2.5rem,8vw,5rem)] leading-[1.1] -mt-1 md:-mt-2 pl-[0.5em] font-light">형상이 되다.</motion.h2>
+                <motion.h2 variants={fadeIn} className="font-sans text-[clamp(2.5rem,8vw,5rem)] leading-[1.1] -mt-1 md:-mt-2 pl-[0.5em] font-light italic">형상이 되다.</motion.h2>
               </div>
               <motion.div variants={fadeIn} className="lg:w-4/12 pb-2 md:pb-4">
                 <p className="text-neutral-600 leading-relaxed max-w-sm font-sans text-sm md:text-base">
@@ -135,15 +158,18 @@ export default function App() {
               </motion.div>
             </motion.div>
             <motion.div 
-              initial={{ scale: 1.05, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 1.5, ease: "easeOut" }}
+              initial="initial"
+              whileInView="animate"
+              viewport={{ once: true }}
+              variants={imageReveal}
               className="w-full aspect-video md:aspect-[21/9] bg-neutral-200 relative overflow-hidden group"
             >
-              <img 
+              <motion.img 
+                whileHover={{ scale: 1.05 }}
+                transition={{ duration: 1.5 }}
                 src="https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=2070&auto=format&fit=crop" 
                 alt="Architectural space"
-                className="w-full h-full object-cover grayscale transition-transform duration-1000 group-hover:scale-105"
+                className="w-full h-full object-cover grayscale"
                 referrerPolicy="no-referrer"
               />
               <div className="absolute inset-0 bg-black/5" />
@@ -158,9 +184,10 @@ export default function App() {
               {/* Left Column */}
               <div className="md:col-span-5 flex flex-col gap-12">
                 <motion.div 
-                  whileInView={{ opacity: 1, y: 0 }}
-                  initial={{ opacity: 0, y: 30 }}
-                  viewport={{ once: true }}
+                  initial="initial"
+                  whileInView="animate"
+                  viewport={{ once: true, margin: "-100px" }}
+                  variants={fadeIn}
                   className="fine-border p-8 md:p-12 editorial-shadow bg-[#f9f9f9]"
                 >
                   <span className="font-sans uppercase text-neutral-400 block mb-4 md:mb-6 text-[10px] tracking-widest">텍스타일 & 어스 (Textiles & Earth)</span>
@@ -174,36 +201,57 @@ export default function App() {
                     <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform" />
                   </a>
                 </motion.div>
-                <div className="aspect-[4/5] bg-neutral-100 overflow-hidden">
-                  <img 
+                <motion.div 
+                  initial="initial"
+                  whileInView="animate"
+                  viewport={{ once: true }}
+                  variants={imageReveal}
+                  className="aspect-[4/5] bg-neutral-100 overflow-hidden"
+                >
+                  <motion.img 
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ duration: 1 }}
                     src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?q=80&w=1916&auto=format&fit=crop" 
                     alt="Minimalist design"
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
                   />
-                </div>
+                </motion.div>
               </div>
 
               {/* Right Column */}
               <div className="md:col-span-6 md:col-start-7 flex flex-col gap-16 md:gap-section-gap md:pt-32">
-                <div className="aspect-[3/4] bg-neutral-100 relative group">
-                  <img 
+                <motion.div 
+                  initial="initial"
+                  whileInView="animate"
+                  viewport={{ once: true }}
+                  variants={imageReveal}
+                  className="aspect-[3/4] bg-neutral-100 relative group"
+                >
+                  <motion.img 
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ duration: 1 }}
                     src="https://images.unsplash.com/photo-1541123437800-1bb1317badc2?q=80&w=2070&auto=format&fit=crop" 
                     alt="Architecture detail"
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute -bottom-10 md:-bottom-12 md:-left-12 bg-white p-6 md:p-8 fine-border max-w-[240px] md:max-w-xs editorial-shadow">
                     <h4 className="font-sans text-lg md:text-xl font-bold mb-1 md:mb-2 leading-tight">오스만 모던 (Haussmann Modern)</h4>
                     <p className="text-neutral-500 font-sans text-xs md:text-sm">파리, 제 8구</p>
                   </div>
-                </div>
-                <div className="pl-6 md:pl-12 border-l fine-border mt-20 md:mt-0">
+                </motion.div>
+                <motion.div 
+                   initial={{ opacity: 0, x: -30 }}
+                   whileInView={{ opacity: 1, x: 0 }}
+                   transition={{ duration: 1.2, delay: 0.3 }}
+                   className="pl-6 md:pl-12 border-l fine-border mt-20 md:mt-0"
+                >
                   <p className="font-sans text-2xl md:text-3xl lg:text-4xl leading-tight mb-6 md:mb-8 font-medium">
                     "디자인은 철학을 위해서가 아니라 인생을 위해 존재한다."
                   </p>
                   <span className="font-sans uppercase text-neutral-400 text-[10px] tracking-widest">— 이사무 노구치 (Isamu Noguchi)</span>
-                </div>
+                </motion.div>
               </div>
             </div>
           </div>
@@ -212,10 +260,16 @@ export default function App() {
         {/* Case Study Section (Dark) */}
         <section id="archive" className="py-16 md:py-section-gap px-6 md:px-margin-edge bg-black text-white">
           <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-baseline mb-12 md:mb-20">
+            <motion.div 
+               initial="initial"
+               whileInView="animate"
+               viewport={{ once: true }}
+               variants={staggerContainer}
+               className="flex flex-col md:flex-row justify-between items-start md:items-baseline mb-12 md:mb-20"
+            >
               <div className="max-w-2xl">
-                <span className="font-sans uppercase text-neutral-500 block mb-4 md:mb-6 tracking-[0.4em] text-[10px]">케이스 스터디: 재생 (The Reclamation)</span>
-                <h2 className="font-sans text-3xl md:text-4xl lg:text-5xl font-bold">위엄의 부활.</h2>
+                <motion.span variants={fadeIn} className="font-sans uppercase text-neutral-500 block mb-4 md:mb-6 tracking-[0.4em] text-[10px]">케이스 스터디: 재생 (The Reclamation)</motion.span>
+                <motion.h2 variants={fadeIn} className="font-sans text-3xl md:text-4xl lg:text-5xl font-bold">위엄의 부활.</motion.h2>
               </div>
               <div className="flex items-center gap-6 md:gap-8 mt-6 md:mt-0">
                 <span className="font-sans text-[10px] opacity-50 tracking-widest">01 / 02</span>
@@ -228,12 +282,26 @@ export default function App() {
                   </button>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-              <div className="space-y-6">
-                <div className="aspect-video relative overflow-hidden">
-                  <img 
+              <motion.div 
+                initial="initial"
+                whileInView="animate"
+                viewport={{ once: true }}
+                variants={fadeIn}
+                className="space-y-6"
+              >
+                <motion.div 
+                  initial="initial"
+                  whileInView="animate"
+                  viewport={{ once: true }}
+                  variants={imageReveal}
+                  className="aspect-video relative overflow-hidden"
+                >
+                  <motion.img 
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ duration: 1 }}
                     src="https://images.unsplash.com/photo-1600607687644-c7171b42498f?q=80&w=2070&auto=format&fit=crop" 
                     alt="Penthouse renovation"
                     className="w-full h-full object-cover"
@@ -242,14 +310,14 @@ export default function App() {
                   <div className="absolute top-4 left-4 md:top-6 md:left-6 bg-black/60 backdrop-blur-md px-3 py-1 md:px-4 md:py-1 border border-white/10">
                     <span className="font-sans text-[8px] md:text-[9px] uppercase tracking-widest">완공 후 (After / Completed)</span>
                   </div>
-                </div>
+                </motion.div>
                 <div className="flex flex-col md:flex-row justify-between items-start pt-2 md:pt-4 gap-4">
                   <h4 className="font-sans text-lg md:text-xl font-bold">펜트하우스 B</h4>
                   <p className="text-neutral-400 max-w-xs font-sans text-xs md:text-sm leading-relaxed">
                     90년대의 어수선한 미학에서<br className="hidden md:block" /> 순수한 빛과 소재의 안식처로의 전환.
                   </p>
                 </div>
-              </div>
+              </motion.div>
               
               <div className="hidden lg:block space-y-6 pt-32">
                 <div className="aspect-video relative opacity-40 grayscale group overflow-hidden">
@@ -278,8 +346,10 @@ export default function App() {
         <section id="bespoke" className="py-20 md:py-section-gap px-6 md:px-margin-edge bg-[#f3f3f3]">
           <div className="max-w-7xl mx-auto text-center">
             <motion.div 
-              whileInView={{ opacity: 1, scale: 1 }}
-              initial={{ opacity: 0, scale: 0.98 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: 40 }}
+              transition={{ duration: 1.2 }}
+              viewport={{ once: true }}
               className="max-w-3xl mx-auto space-y-8 md:space-y-12"
             >
               <span className="font-sans uppercase text-neutral-500 tracking-[0.5em] text-[10px]">디자인 레지스트리 (Design Registry)</span>
