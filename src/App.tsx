@@ -379,26 +379,36 @@ export default function App() {
 
               {/* Right Column */}
               <div className="md:col-span-6 md:col-start-7 flex flex-col gap-16 md:gap-section-gap md:pt-32">
-                <motion.div 
-                  initial="initial"
-                  whileInView="animate"
-                  viewport={{ once: true }}
-                  variants={imageReveal}
+                <div 
                   className="aspect-[3/4] bg-neutral-100 relative group"
                 >
-                  <motion.img 
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ duration: 1 }}
-                    src="https://images.unsplash.com/photo-1541123437800-1bb1317badc2?q=80&w=2070&auto=format&fit=crop" 
-                    alt="Architecture detail"
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute -bottom-10 md:-bottom-12 md:-left-12 bg-white p-6 md:p-8 fine-border max-w-[240px] md:max-w-xs editorial-shadow">
+                  <motion.div
+                    initial="initial"
+                    whileInView="animate"
+                    viewport={{ once: true }}
+                    variants={imageReveal}
+                    className="w-full h-full overflow-hidden"
+                  >
+                    <motion.img 
+                      whileHover={{ scale: 1.05 }}
+                      transition={{ duration: 1.2 }}
+                      src="https://images.unsplash.com/photo-1541123437800-1bb1317badc2?q=80&w=2070&auto=format&fit=crop" 
+                      alt="Architecture detail"
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  </motion.div>
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 1, delay: 0.8 }}
+                    viewport={{ once: true }}
+                    className="absolute -bottom-10 md:-bottom-12 md:-left-12 bg-white p-6 md:p-8 fine-border max-w-[240px] md:max-w-xs editorial-shadow z-10"
+                  >
                     <h4 className="font-sans text-lg md:text-xl font-bold mb-1 md:mb-2 leading-tight">오스만 모던 (Haussmann Modern)</h4>
                     <p className="text-neutral-500 font-sans text-xs md:text-sm">파리, 제 8구</p>
-                  </div>
-                </motion.div>
+                  </motion.div>
+                </div>
                 <motion.div 
                    initial={{ opacity: 0, x: -30 }}
                    whileInView={{ opacity: 1, x: 0 }}
